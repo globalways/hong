@@ -33,8 +33,45 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package user
+package app
+
+import (
+	"github.com/globalways/hong/g"
+	"github.com/globalways/hong/logic"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
+	"log"
+)
 
 var (
-	User UserAdapter
+	appAdapter logic.AppAdapter
 )
+
+func InitApp() {
+	cfg := g.Config()
+	apicfg := cfg.API
+
+	db, err := gorm.Open("mysql", apicfg.AppDSN)
+	if err != nil {
+		log.Fatalf("open database error: %v", err)
+	}
+	if err := db.DB().Ping(); err != nil {
+		log.Fatalf("ping to database error: %v", err)
+	}
+
+	db.DB().SetMaxIdleConns(apicfg.MaxIdle)
+	db.DB().SetMaxOpenConns(apicfg.MaxOpen)
+
+	// Disable table name's pluralization
+	db.SingularTable(true)
+	if cfg.Debug {
+		db.LogMode(true)
+	} else {
+		db.LogMode(false)
+	}
+
+	appAdapter = logic.NewAppDefault(db)
+	if err := appAdapter.SyncDB(); err != nil {
+		log.Fatalf("sync database error: %v", err)
+	}
+}

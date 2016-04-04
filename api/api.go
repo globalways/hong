@@ -39,9 +39,15 @@
 package api
 
 import (
+	"github.com/globalways/hong/api/app"
 	"github.com/globalways/hong/api/oauth2"
+	"github.com/globalways/hong/api/user"
 	"github.com/globalways/hong/g"
 	"github.com/go-martini/martini"
+	"github.com/martini-contrib/binding"
+	"github.com/martini-contrib/cors"
+	"github.com/martini-contrib/render"
+	"time"
 )
 
 func Start() {
@@ -50,8 +56,21 @@ func Start() {
 
 	// init oauth2
 	oauth2.InitServer()
+	// init user
+	user.InitUser()
+	// init app
+	app.InitApp()
 
 	m := martini.Classic()
+	m.Use(render.Renderer())
+	m.Use(cors.Allow(&cors.Options{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "HEAD"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	if cfg.Debug {
 		martini.Env = martini.Dev
 	} else {
@@ -66,7 +85,18 @@ func Start() {
 			r.Post("/info", oauth2.Info)
 		})
 
-		// other
+		// user router
+		r.Group("/users", func(r martini.Router) {
+			r.Post("", binding.Bind(user.UserNewRequestParam{}), user.NewUser)
+			r.Get("/h/:username", user.GetUser)
+			r.Get("/t/:username", user.GetUser)
+		})
+
+		// app router
+		r.Group("/apps", func(r martini.Router) {
+			r.Post("", binding.Bind(app.AppNewRequestParam{}), app.NewApp)
+			r.Get("/:appKey", app.GetApp)
+		})
 	})
 
 	m.RunOnAddr(apicfg.Addr)

@@ -33,55 +33,81 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package oauth2
+package logic
 
 import (
-	"github.com/RangelReale/osin"
+	"github.com/aiwuTech/devKit/random"
 	"github.com/globalways/hong/g"
-	"github.com/globalways/hong/logic"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/globalways/hong/modal"
+	"github.com/go-errors/errors"
 	"github.com/jinzhu/gorm"
-	"log"
 )
 
-var (
-	server *osin.Server
-)
+type AppAdapter interface {
+	SyncDB() error
+	NewApp(name, desc string) (*modal.App, error)
+	GetApp(key string) (*modal.App, error)
+}
 
-func InitServer() {
-	cfg := g.Config()
-	apicfg := cfg.API
+type AppDefault struct {
+	db *gorm.DB
+}
 
-	db, err := gorm.Open("mysql", apicfg.AuthStorageAddr)
-	if err != nil {
-		log.Fatalf("open database error: %v", err)
+func NewAppDefault(db *gorm.DB) *AppDefault {
+	return &AppDefault{
+		db: db,
 	}
-	if err := db.DB().Ping(); err != nil {
-		log.Fatalf("ping to database error: %v", err)
-	}
+}
 
-	db.DB().SetMaxIdleConns(apicfg.MaxIdle)
-	db.DB().SetMaxOpenConns(apicfg.MaxOpen)
-
-	// Disable table name's pluralization
-	db.SingularTable(true)
-	if cfg.Debug {
-		db.LogMode(true)
-	} else {
-		db.LogMode(false)
+func (this *AppDefault) NewApp(name, desc string) (*modal.App, error) {
+	if name == "" {
+		return nil, errors.New(g.INVALID_PARAM_ERROR)
 	}
 
-	storage := logic.NewDefaultOauthStorage(db)
-	if err := storage.SyncDB(); err != nil {
-		log.Fatalf("sync database error: %v", err)
+	app := &modal.App{
+		Key:    random.RandomAlphanumeric(16),
+		Secret: random.RandomAlphanumeric(32),
+		Name:   name,
+		Desc:   desc,
 	}
 
-	sconfig := osin.NewServerConfig()
-	sconfig.AllowedAuthorizeTypes = osin.AllowedAuthorizeType{osin.CODE, osin.TOKEN}
-	sconfig.AllowedAccessTypes = osin.AllowedAccessType{osin.AUTHORIZATION_CODE,
-		osin.REFRESH_TOKEN, osin.PASSWORD, osin.CLIENT_CREDENTIALS, osin.ASSERTION}
-	sconfig.AllowGetAccessRequest = true
-	sconfig.AllowClientSecretInParams = true
+	if err := this.db.Create(app).Error; err != nil {
+		return nil, errors.New(err)
+	}
 
-	server = osin.NewServer(sconfig, storage)
+	return app, nil
+}
+
+func (this *AppDefault) GetApp(key string) (*modal.App, error) {
+	if key == "" {
+		return nil, errors.New(g.INVALID_PARAM_ERROR)
+	}
+
+	app := &modal.App{}
+	if err := this.db.Where(&modal.App{Key: key}).First(app).Error; err != nil {
+		return nil, errors.New(err)
+	}
+
+	return app, nil
+}
+
+func (this *AppDefault) SyncDB() error {
+	tx := this.db.Begin()
+	{
+		app := &modal.App{}
+		if tx.HasTable(app) {
+			if err := tx.AutoMigrate(app).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		} else {
+			if err := tx.CreateTable(app).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+	tx.Commit()
+
+	return nil
 }

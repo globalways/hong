@@ -33,65 +33,37 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package g
+package app
 
 import (
-	"github.com/pquerna/ffjson/ffjson"
-	"github.com/toolkits/file"
-	"log"
-	"sync"
+	"github.com/globalways/common/resp"
+	"github.com/go-martini/martini"
+	"github.com/martini-contrib/render"
+	"net/http"
 )
 
-type APIConfig struct {
-	Addr            string `json:"addr"`
-	UserDSN         string `json:"userDSN"`
-	AppDSN          string `json:"appDSN"`
-	AuthStorageAddr string `json:"authStorageAddr"`
-	MaxIdle         int    `json:"maxIdle"`
-	MaxOpen         int    `json:"maxOpen"`
+type AppNewRequestParam struct {
+	Name string `form:"name" json:"name" binding:"required"`
+	Desc string `form:"desc" json:"desc"`
 }
 
-type GlobalConfig struct {
-	Debug    bool       `json:"debug"`
-	Logstash string     `json:"logstash"`
-	API      *APIConfig `json:"api"`
-}
-
-var (
-	config *GlobalConfig
-	lock   = new(sync.RWMutex)
-)
-
-func Config() *GlobalConfig {
-	lock.RLock()
-	defer lock.RUnlock()
-	return config
-}
-
-func ParseConfig(cfg string) *GlobalConfig {
-	if cfg == "" {
-		log.Fatal("use -c to specify configuration file")
-	}
-
-	if !file.IsExist(cfg) {
-		log.Fatalf("config file: %s is not existent. maybe you need `mv cfg.example.json cfg.json`", cfg)
-	}
-
-	configContent, err := file.ToTrimString(cfg)
+func NewApp(reqParam AppNewRequestParam, r render.Render, req *http.Request) {
+	newApp, err := appAdapter.NewApp(reqParam.Name, reqParam.Desc)
 	if err != nil {
-		log.Fatalf("read config file: %s fail: %v", cfg, err)
+		r.JSON(http.StatusBadRequest, resp.NewAPIErrorResp(err.Error()))
+		return
 	}
 
-	var c GlobalConfig
-	err = ffjson.Unmarshal([]byte(configContent), &c)
+	r.JSON(http.StatusCreated, resp.NewAPIResp(newApp))
+}
+
+func GetApp(params martini.Params, r render.Render) {
+	appKey := params["appKey"]
+	app, err := appAdapter.GetApp(appKey)
 	if err != nil {
-		log.Fatalf("parse config file: %s fail: %v", cfg, err)
+		r.JSON(http.StatusBadRequest, resp.NewAPIErrorResp(err.Error()))
+		return
 	}
 
-	lock.Lock()
-	config = &c
-	lock.Unlock()
-
-	log.Printf("g.ParseConfig ok, file: %s", cfg)
-	return config
+	r.JSON(http.StatusOK, resp.NewAPIResp(app))
 }

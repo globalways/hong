@@ -33,7 +33,7 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package oauth2
+package logic
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ import (
 	"time"
 )
 
-type Storage interface {
+type OauthStorage interface {
 	osin.Storage
 
 	// CreateClient stores the client in the database and returns an error, if something went wrong.
@@ -58,31 +58,31 @@ type Storage interface {
 	RemoveClient(id string) error
 }
 
-type StorageDefault struct {
+type OauthStorageDefault struct {
 	db *gorm.DB
 }
 
 // New returns a new mysql storage instance.
-func NewDefaultStorage(db *gorm.DB) *StorageDefault {
-	return &StorageDefault{db: db}
+func NewDefaultOauthStorage(db *gorm.DB) *OauthStorageDefault {
+	return &OauthStorageDefault{db: db}
 }
 
 // Clone the storage if needed. For example, using mgo, you can clone the session with session.Clone
 // to avoid concurrent access problems.
 // This is to avoid cloning the connection at each method access.
 // Can return itself if not a problem.
-func (this *StorageDefault) Clone() osin.Storage {
-	return &StorageDefault{
+func (this *OauthStorageDefault) Clone() osin.Storage {
+	return &OauthStorageDefault{
 		db: this.db.New(),
 	}
 }
 
 // Close the resources the Storage potentially holds (using Clone for example)
-func (this *StorageDefault) Close() {
+func (this *OauthStorageDefault) Close() {
 }
 
 // CreateClient stores the client in the database and returns an error, if something went wrong.
-func (this *StorageDefault) CreateClient(c osin.Client) error {
+func (this *OauthStorageDefault) CreateClient(c osin.Client) error {
 	extra, err := assertToString(c.GetUserData())
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (this *StorageDefault) CreateClient(c osin.Client) error {
 }
 
 // UpdateClient updates the client (identified by it's id) and replaces the values with the values of client.
-func (this *StorageDefault) UpdateClient(c osin.Client) error {
+func (this *OauthStorageDefault) UpdateClient(c osin.Client) error {
 	extra, err := assertToString(c.GetUserData())
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (this *StorageDefault) UpdateClient(c osin.Client) error {
 }
 
 // RemoveClient removes a client (identified by id) from the database. Returns an error if something went wrong.
-func (this *StorageDefault) RemoveClient(id string) (err error) {
+func (this *OauthStorageDefault) RemoveClient(id string) (err error) {
 	if err := this.db.Delete(&modal.Client{Id: id}).Error; err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (this *StorageDefault) RemoveClient(id string) (err error) {
 }
 
 // GetClient loads the client by id (client_id)
-func (this *StorageDefault) GetClient(id string) (osin.Client, error) {
+func (this *OauthStorageDefault) GetClient(id string) (osin.Client, error) {
 	c := &modal.Client{}
 	if err := this.db.Where(&modal.Client{Id: id}).First(c).Error; err != nil {
 		return nil, errors.New("Client not found")
@@ -142,7 +142,7 @@ func (this *StorageDefault) GetClient(id string) (osin.Client, error) {
 }
 
 // SaveAuthorize saves authorize data.
-func (this *StorageDefault) SaveAuthorize(data *osin.AuthorizeData) error {
+func (this *OauthStorageDefault) SaveAuthorize(data *osin.AuthorizeData) error {
 	extra, err := assertToString(data.UserData)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (this *StorageDefault) SaveAuthorize(data *osin.AuthorizeData) error {
 // LoadAuthorize looks up AuthorizeData by a code.
 // Client information MUST be loaded together.
 // Optionally can return error if expired.
-func (this *StorageDefault) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
+func (this *OauthStorageDefault) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	data := &modal.Authorize{}
 	if err := this.db.Where(&modal.Authorize{Code: code}).First(data).Error; err != nil {
 		return nil, errors.New(err)
@@ -198,7 +198,7 @@ func (this *StorageDefault) LoadAuthorize(code string) (*osin.AuthorizeData, err
 }
 
 // RemoveAuthorize revokes or deletes the authorization code.
-func (this *StorageDefault) RemoveAuthorize(code string) error {
+func (this *OauthStorageDefault) RemoveAuthorize(code string) error {
 	if err := this.db.Delete(&modal.Authorize{Code: code}).Error; err != nil {
 		return errors.New(err)
 	}
@@ -208,7 +208,7 @@ func (this *StorageDefault) RemoveAuthorize(code string) error {
 
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
-func (this *StorageDefault) SaveAccess(data *osin.AccessData) error {
+func (this *OauthStorageDefault) SaveAccess(data *osin.AccessData) error {
 	if data.Client == nil {
 		return errors.New("data.Client must not be nil")
 	}
@@ -267,7 +267,7 @@ func (this *StorageDefault) SaveAccess(data *osin.AccessData) error {
 // LoadAccess retrieves access data by token. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (this *StorageDefault) LoadAccess(token string) (*osin.AccessData, error) {
+func (this *OauthStorageDefault) LoadAccess(token string) (*osin.AccessData, error) {
 	access := &modal.Access{}
 	if err := this.db.Where(&modal.Access{AccessToken: token}).First(access).Error; err != nil {
 		return nil, err
@@ -302,7 +302,7 @@ func (this *StorageDefault) LoadAccess(token string) (*osin.AccessData, error) {
 }
 
 // RemoveAccess revokes or deletes an AccessData.
-func (this *StorageDefault) RemoveAccess(token string) error {
+func (this *OauthStorageDefault) RemoveAccess(token string) error {
 	if err := this.db.Delete(&modal.Access{AccessToken: token}).Error; err != nil {
 		return err
 	}
@@ -313,7 +313,7 @@ func (this *StorageDefault) RemoveAccess(token string) error {
 // LoadRefresh retrieves refresh AccessData. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (this *StorageDefault) LoadRefresh(token string) (*osin.AccessData, error) {
+func (this *OauthStorageDefault) LoadRefresh(token string) (*osin.AccessData, error) {
 	refresh := &modal.Refresh{}
 	if err := this.db.Where(&modal.Refresh{Token: token}).Error; err != nil {
 		return nil, err
@@ -323,7 +323,7 @@ func (this *StorageDefault) LoadRefresh(token string) (*osin.AccessData, error) 
 }
 
 // RemoveRefresh revokes or deletes refresh AccessData.
-func (this *StorageDefault) RemoveRefresh(token string) error {
+func (this *OauthStorageDefault) RemoveRefresh(token string) error {
 	if err := this.db.Delete(&modal.Refresh{Token: token}).Error; err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func (this *StorageDefault) RemoveRefresh(token string) error {
 }
 
 // Makes easy to create a osin.DefaultClient
-func (this *StorageDefault) CreateClientWithInformation(id string, secret string, redirectUri string, userData interface{}) osin.Client {
+func (this *OauthStorageDefault) CreateClientWithInformation(id string, secret string, redirectUri string, userData interface{}) osin.Client {
 	return &osin.DefaultClient{
 		Id:          id,
 		Secret:      secret,
@@ -354,7 +354,7 @@ func assertToString(in interface{}) (string, error) {
 	return "", errors.Errorf(`Could not assert "%v" to string`, in)
 }
 
-func (this *StorageDefault) SyncDB() error {
+func (this *OauthStorageDefault) SyncDB() error {
 	tx := this.db.Begin()
 	{
 		client := &modal.Client{}

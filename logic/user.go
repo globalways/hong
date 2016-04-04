@@ -33,7 +33,7 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package user
+package logic
 
 import (
 	"github.com/aiwuTech/devKit/convert"
@@ -47,10 +47,18 @@ import (
 type UserAdapter interface {
 	NewUser(userType modal.UserType, tel, password string) (*modal.User, error)
 	NextHong(userType modal.UserType) string
+	GetUser(username string) (*modal.User, error)
+	SyncDB() error
 }
 
 type UserDefault struct {
 	db *gorm.DB
+}
+
+func NewUserDefault(db *gorm.DB) *UserDefault {
+	return &UserDefault{
+		db: db,
+	}
 }
 
 func (this *UserDefault) NewUser(userType modal.UserType, tel, password string) (*modal.User, error) {
@@ -88,4 +96,38 @@ func (this *UserDefault) NextHong(userType modal.UserType) string {
 	}
 
 	return convert.Int642str(convert.Str2Int64(user.Hong) + 1)
+}
+
+func (this *UserDefault) GetUser(username string) (*modal.User, error) {
+	if username == "" {
+		return nil, errors.New(g.INVALID_PARAM_ERROR)
+	}
+
+	user := &modal.User{}
+	if err := this.db.Where(&modal.User{Hong: username}).Or(&modal.User{Tel: username}).First(user).Error; err != nil {
+		return nil, errors.New(err)
+	}
+
+	return user, nil
+}
+
+func (this *UserDefault) SyncDB() error {
+	tx := this.db.Begin()
+	{
+		user := &modal.User{}
+		if tx.HasTable(user) {
+			if err := tx.AutoMigrate(user).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		} else {
+			if err := tx.CreateTable(user).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+	tx.Commit()
+
+	return nil
 }

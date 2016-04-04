@@ -33,65 +33,45 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package g
+package user
 
 import (
-	"github.com/pquerna/ffjson/ffjson"
-	"github.com/toolkits/file"
+	"github.com/globalways/hong/g"
+	"github.com/globalways/hong/logic"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 	"log"
-	"sync"
 )
-
-type APIConfig struct {
-	Addr            string `json:"addr"`
-	UserDSN         string `json:"userDSN"`
-	AppDSN          string `json:"appDSN"`
-	AuthStorageAddr string `json:"authStorageAddr"`
-	MaxIdle         int    `json:"maxIdle"`
-	MaxOpen         int    `json:"maxOpen"`
-}
-
-type GlobalConfig struct {
-	Debug    bool       `json:"debug"`
-	Logstash string     `json:"logstash"`
-	API      *APIConfig `json:"api"`
-}
 
 var (
-	config *GlobalConfig
-	lock   = new(sync.RWMutex)
+	userAdapter logic.UserAdapter
 )
 
-func Config() *GlobalConfig {
-	lock.RLock()
-	defer lock.RUnlock()
-	return config
-}
+func InitUser() {
+	cfg := g.Config()
+	apicfg := cfg.API
 
-func ParseConfig(cfg string) *GlobalConfig {
-	if cfg == "" {
-		log.Fatal("use -c to specify configuration file")
-	}
-
-	if !file.IsExist(cfg) {
-		log.Fatalf("config file: %s is not existent. maybe you need `mv cfg.example.json cfg.json`", cfg)
-	}
-
-	configContent, err := file.ToTrimString(cfg)
+	db, err := gorm.Open("mysql", apicfg.AuthStorageAddr)
 	if err != nil {
-		log.Fatalf("read config file: %s fail: %v", cfg, err)
+		log.Fatalf("open database error: %v", err)
+	}
+	if err := db.DB().Ping(); err != nil {
+		log.Fatalf("ping to database error: %v", err)
 	}
 
-	var c GlobalConfig
-	err = ffjson.Unmarshal([]byte(configContent), &c)
-	if err != nil {
-		log.Fatalf("parse config file: %s fail: %v", cfg, err)
+	db.DB().SetMaxIdleConns(apicfg.MaxIdle)
+	db.DB().SetMaxOpenConns(apicfg.MaxOpen)
+
+	// Disable table name's pluralization
+	db.SingularTable(true)
+	if cfg.Debug {
+		db.LogMode(true)
+	} else {
+		db.LogMode(false)
 	}
 
-	lock.Lock()
-	config = &c
-	lock.Unlock()
-
-	log.Printf("g.ParseConfig ok, file: %s", cfg)
-	return config
+	userAdapter = logic.NewUserDefault(db)
+	if err := userAdapter.SyncDB(); err != nil {
+		log.Fatalf("sync database error: %v", err)
+	}
 }

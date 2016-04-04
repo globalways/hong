@@ -35,7 +35,10 @@
 */
 package modal
 
-import "github.com/jinzhu/gorm"
+import (
+	"github.com/jinzhu/gorm"
+	"github.com/pquerna/ffjson/ffjson"
+)
 
 type UserType int
 
@@ -44,11 +47,44 @@ const (
 	UserType_NORMAL
 )
 
+type UserGender int
+
+const (
+	UserGender_NONE UserGender = iota
+	UserGender_MAN
+	UserGender_WOMAN
+)
+
 type User struct {
 	Hong     string `gorm:"unique;not null"`
 	Nick     string
 	Tel      string `gorm:"unique;not null"`
 	Password string
 	Type     UserType `gorm:"index;not null"`
+	Avatar   string
+	Age      int
+	Gender   UserGender `gorm:"index;not null"`
 	gorm.Model
+}
+
+func (this *User) MarshalJSON() ([]byte, error) {
+	type InnterUser struct {
+		Hong       string     `json:"hong"`
+		Nick       string     `json:"nick,omitempty"`
+		Tel        string     `json:"tel"`
+		UserType   UserType   `json:"userType"`
+		Avatar     string     `json:"avatar,omitempty"`
+		Age        int        `json:"age,omitempty"`
+		UserGender UserGender `json:"userGender"`
+	}
+
+	return ffjson.Marshal(&InnterUser{
+		Hong:       this.Hong,
+		Nick:       this.Nick,
+		Tel:        this.Tel,
+		UserType:   this.Type,
+		Avatar:     this.Avatar,
+		Age:        this.Age,
+		UserGender: this.Gender,
+	})
 }

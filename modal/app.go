@@ -33,65 +33,33 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          佛祖保佑       永无BUG
 */
-package g
+package modal
 
 import (
+	"github.com/jinzhu/gorm"
 	"github.com/pquerna/ffjson/ffjson"
-	"github.com/toolkits/file"
-	"log"
-	"sync"
 )
 
-type APIConfig struct {
-	Addr            string `json:"addr"`
-	UserDSN         string `json:"userDSN"`
-	AppDSN          string `json:"appDSN"`
-	AuthStorageAddr string `json:"authStorageAddr"`
-	MaxIdle         int    `json:"maxIdle"`
-	MaxOpen         int    `json:"maxOpen"`
+type App struct {
+	gorm.Model
+	Key    string `gorm:"unique;not null"`
+	Secret string
+	Name   string `gorm:"unique;not null"`
+	Desc   string
 }
 
-type GlobalConfig struct {
-	Debug    bool       `json:"debug"`
-	Logstash string     `json:"logstash"`
-	API      *APIConfig `json:"api"`
-}
-
-var (
-	config *GlobalConfig
-	lock   = new(sync.RWMutex)
-)
-
-func Config() *GlobalConfig {
-	lock.RLock()
-	defer lock.RUnlock()
-	return config
-}
-
-func ParseConfig(cfg string) *GlobalConfig {
-	if cfg == "" {
-		log.Fatal("use -c to specify configuration file")
+func (this *App) MarshalJSON() ([]byte, error) {
+	type InnerApp struct {
+		Key    string `json:"key"`
+		Secret string `json:"secret"`
+		Name   string `json:"name"`
+		Desc   string `json:"desc,omitempty"`
 	}
 
-	if !file.IsExist(cfg) {
-		log.Fatalf("config file: %s is not existent. maybe you need `mv cfg.example.json cfg.json`", cfg)
-	}
-
-	configContent, err := file.ToTrimString(cfg)
-	if err != nil {
-		log.Fatalf("read config file: %s fail: %v", cfg, err)
-	}
-
-	var c GlobalConfig
-	err = ffjson.Unmarshal([]byte(configContent), &c)
-	if err != nil {
-		log.Fatalf("parse config file: %s fail: %v", cfg, err)
-	}
-
-	lock.Lock()
-	config = &c
-	lock.Unlock()
-
-	log.Printf("g.ParseConfig ok, file: %s", cfg)
-	return config
+	return ffjson.Marshal(&InnerApp{
+		Key:    this.Key,
+		Secret: this.Secret,
+		Name:   this.Name,
+		Desc:   this.Desc,
+	})
 }
