@@ -38,7 +38,7 @@ package logic
 import (
 	"fmt"
 	"github.com/RangelReale/osin"
-	"github.com/globalways/hong/modal"
+	"github.com/globalways/dvip/modal"
 	"github.com/go-errors/errors"
 	"github.com/jinzhu/gorm"
 	"time"

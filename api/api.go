@@ -39,15 +39,15 @@
 package api
 
 import (
-	"github.com/globalways/hong/api/app"
-	"github.com/globalways/hong/api/oauth2"
-	"github.com/globalways/hong/api/user"
-	"github.com/globalways/hong/g"
+	"github.com/globalways/dvip/api/oauth2"
+	"github.com/globalways/dvip/api/user"
+	"github.com/globalways/dvip/g"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/cors"
 	"github.com/martini-contrib/render"
 	"time"
+	"github.com/globalways/dvip/api/app"
 )
 
 func Start() {
@@ -90,6 +90,7 @@ func Start() {
 			r.Post("", binding.Bind(user.UserNewRequestParam{}), user.NewUser)
 			r.Get("/h/:username", user.GetUser)
 			r.Get("/t/:username", user.GetUser)
+			r.Post("/login", )
 		})
 
 		// app router

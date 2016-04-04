@@ -38,8 +38,8 @@ package logic
 import (
 	"github.com/aiwuTech/devKit/convert"
 	"github.com/globalways/common/utils"
-	"github.com/globalways/hong/g"
-	"github.com/globalways/hong/modal"
+	"github.com/globalways/dvip/g"
+	"github.com/globalways/dvip/modal"
 	"github.com/go-errors/errors"
 	"github.com/jinzhu/gorm"
 )

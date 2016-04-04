@@ -36,8 +36,8 @@
 package user
 
 import (
-	"github.com/globalways/hong/g"
-	"github.com/globalways/hong/logic"
+	"github.com/globalways/dvip/g"
+	"github.com/globalways/dvip/logic"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	"log"

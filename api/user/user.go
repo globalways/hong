@@ -38,12 +38,13 @@ package user
 import (
 	"github.com/globalways/common"
 	"github.com/globalways/common/resp"
-	"github.com/globalways/hong/modal"
+	"github.com/globalways/dvip/modal"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
 	"github.com/martini-contrib/render"
 	"net/http"
 	"regexp"
+	"github.com/globalways/common/utils"
 )
 
 type UserNewRequestParam struct {
@@ -83,4 +84,24 @@ func GetUser(params martini.Params, r render.Render) {
 	}
 
 	r.JSON(http.StatusOK, resp.NewAPIResp(user))
+}
+
+type UserLoginRequestParam struct {
+	Username string `form:"username" json:"username" binding:"required"`
+	Password string `form:"password" json:"password" binding:"required"`
+}
+
+func UserLogin(reqParam UserLoginRequestParam, r render.Render) {
+	user, err := userAdapter.GetUser(reqParam.Username)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, resp.NewAPIErrorResp(err.Error()))
+		return
+	}
+
+	if !utils.DecodePassword(user.Password, reqParam.Password) {
+		r.JSON(http.StatusBadRequest, resp.NewAPIErrorResp("user password is wrong"))
+		return
+	}
+
+	r.JSON(http.StatusOK, )
 }

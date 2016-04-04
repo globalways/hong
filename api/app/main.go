@@ -1,5 +1,5 @@
 // Copyright 2016 zm@huantucorp.com
-//
+// 
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at
@@ -36,11 +36,11 @@
 package app
 
 import (
-	"github.com/globalways/hong/g"
-	"github.com/globalways/hong/logic"
+	"github.com/globalways/dvip/g"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	"log"
+	"github.com/globalways/dvip/logic"
 )
 
 var (

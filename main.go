@@ -39,8 +39,8 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/globalways/common/logger"
-	"github.com/globalways/hong/api"
-	"github.com/globalways/hong/g"
+	"github.com/globalways/dvip/api"
+	"github.com/globalways/dvip/g"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"os/signal"
@@ -50,7 +50,7 @@ import (
 )
 
 var (
-	version = kingpin.Flag("version", "show version of hong").Short('v').Default("false").Bool()
+	version = kingpin.Flag("version", "show version of dvip").Short('v').Default("false").Bool()
 	cfgFile = kingpin.Flag("cfg", "config file location").Short('c').Default(filepath.Join("config", "cfg.json")).String()
 )
 

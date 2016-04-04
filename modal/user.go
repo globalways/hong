@@ -69,7 +69,7 @@ type User struct {
 
 func (this *User) MarshalJSON() ([]byte, error) {
 	type InnterUser struct {
-		Hong       string     `json:"hong"`
+		Hong       string     `json:"dvip"`
 		Nick       string     `json:"nick,omitempty"`
 		Tel        string     `json:"tel"`
 		UserType   UserType   `json:"userType"`

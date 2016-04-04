@@ -36,6 +36,6 @@
 package g
 
 const (
-	VERSION = "0.0.1"
-	APP_ID = "com.globalways.hong"
+	VERSION = "0.0.2"
+	APP_ID = "com.globalways.dvip"
 )
